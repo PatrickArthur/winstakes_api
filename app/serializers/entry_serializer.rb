@@ -1,5 +1,5 @@
 class EntrySerializer < ActiveModel::Serializer
-  attributes :id, :title, :description, :file_attachment, :video_attachment, :evidence_attachment_urls, :vote_count, :weighted_score, :created_at, :updated_at
+  attributes :id, :title, :description, :file_attachment, :video_attachment, :evidence_attachment_urls, :vote_count, :challenge, :weighted_score, :created_at, :updated_at
 
   belongs_to :challenge_participant, serializer: ChallengeParticipantSerializer
 
@@ -22,5 +22,9 @@ class EntrySerializer < ActiveModel::Serializer
     object.evidence_attachment.map do |attachment|
       Rails.application.routes.url_helpers.rails_blob_url(attachment, host: 'localhost:4000')
     end
+  end
+
+  def challenge
+    object.challenge_participant.challenge
   end
 end

@@ -99,6 +99,16 @@ class Challenge < ApplicationRecord
     self.judges.delete(User.where(id: judges_to_remove)) if judges_to_remove.any?
   end
 
+  def voting_open?
+    return false unless start_date.present?
+
+    voting_start = start_date
+    voting_end = voting_start + 72.hours
+    now = Time.current
+
+    now >= voting_start && now <= voting_end
+  end
+
   private
 
   def create_wonk
@@ -125,7 +135,7 @@ class Challenge < ApplicationRecord
     end
   end
 
-   def correct_video_mime_type
+  def correct_video_mime_type
     if video.attached? && !video.content_type.in?(%w[video/mp4 video/quicktime])
       errors.add(:video, 'must be MP4 or MOV')
     end

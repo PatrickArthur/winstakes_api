@@ -65,13 +65,7 @@ Rails.application.routes.draw do
       get 'entries', to: 'entries#index'
     end
     resources :challenge_participants, only: [:index, :destroy] do
-      resources :entries, only: [:index, :show, :create, :update, :destroy] do
-        resources :votes, only: [:create] do 
-          collection do
-            get 'check', to: 'votes#check'
-          end
-        end
-      end
+      resources :entries, only: [:index, :show, :create, :update, :destroy]
       collection do
         post 'join'  # POST to /challenge_participants/join
         delete 'unjoin'
@@ -79,6 +73,12 @@ Rails.application.routes.draw do
     end
     resources :likes, only: [:create, :destroy]
   end
+
+  resources :challenges do
+     resources :entries do
+       resources :votes, only: [:create]
+     end
+   end
 
   post 'match', to: 'matches#find_matches'
 

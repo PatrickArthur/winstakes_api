@@ -13,34 +13,44 @@ class VotesController < ApplicationController
   end
 
   def create
-    user = Profile.find(params[:profile_id]).user
+    challenge = Challenge.find(params[:challenge_id])
     entry = Entry.find(params[:entry_id])
-    creator_id =  Challenge.find(params[:challenge_id]).creator.id
-    role = nil
-    if params["profileId"].to_i == creator_id
-      role = 'creator'
-    end
-    
-    # Determine the vote's weight based on the user's role
-    vote_weight = determine_vote_weight(role)
 
-    vote = entry.votes.new(user: user, weight: vote_weight)
-   
+    unless challenge.voting_open?
+      return render json: { error: "Voting is not open at this time" }, status: :forbidden
+    end
+
+    unless can_vote?(challenge, current_user)
+      return render json: { error: "You are not allowed to vote in this challenge" }, status: :forbidden
+    end
+
+    if Vote.exists?(user: current_user, challenge: challenge)
+      return render json: { error: "You have already voted in this challenge" }, status: :unprocessable_entity
+    end
+
+    vote = Vote.new(user: current_user, challenge: challenge, entry: entry)
+
     if vote.save
-      render json: { message: 'Vote successfully recorded' }, status: :created
+      render json: vote, status: :created
     else
-      render json: { errors: vote.errors.full_messages }, status: :unprocessable_entity
+      render json: vote.errors, status: :unprocessable_entity
     end
   end
 
   private
 
-  def determine_vote_weight(role)
-    case role
-    when 'creator', 'judge'
-      5
+  def can_vote?(challenge, user)
+    case challenge.judging_method
+    when "publicVote"
+      true
+    when "participantsOnly"
+      challenge.participants.exists?(user_id: user.id)
+    when "hybridVote"
+      is_participant = challenge.challenge_participants.exists?(user_id: user.id)
+      is_follower = challenge.creator.followers.exists?(id: user.id)
+      is_participant || is_follower
     else
-      1
+      false
     end
   end
 end
