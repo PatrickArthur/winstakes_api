@@ -1,5 +1,5 @@
 class ChallengeSerializer < ActiveModel::Serializer
-  attributes :id, :title, :description, :criteria_for_winning, :judging_method, :finals_judging, :prize_type, :token_prize_percentage, :fixed_token_prize, :product_id, :prize, :creator_id, :video_url, :start_date, :end_date, :duration, :voting_start_time, :voting_end_time, :status, :created_at, :updated_at
+  attributes :id, :title, :description, :criteria_for_winning, :judging_method, :finals_judging, :prize_type, :token_prize_percentage, :fixed_token_prize, :product_id, :prize, :creator_id, :video_url, :start_date, :end_date, :duration, :voting_start_time, :voting_end_time, :entries, :status, :created_at, :updated_at
 
   belongs_to :creator, serializer: UserSerializer
 
@@ -35,6 +35,10 @@ class ChallengeSerializer < ActiveModel::Serializer
     else
       nil
     end
+  end
+
+  def entries
+    object.challenge_participants.map(&:entries).flatten
   end
 end
 

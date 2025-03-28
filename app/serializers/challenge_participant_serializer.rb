@@ -2,6 +2,7 @@ class ChallengeParticipantSerializer < ActiveModel::Serializer
   attributes :id, :user_id, :challenge_id, :profile_id, :profile_name, :user_email, :creator_id, :photo_url, :created_at, :updated_at
 
   belongs_to :user
+  has_many :entries
 
   def profile_id
     object.user.profile.id

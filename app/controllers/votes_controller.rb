@@ -1,7 +1,7 @@
 class VotesController < ApplicationController
   before_action :authenticate_user!
 
-  def check
+  def check_vote
     user_id = Profile.find(params[:profile_id]).user.id
     entry_id = params[:entry_id]
 
