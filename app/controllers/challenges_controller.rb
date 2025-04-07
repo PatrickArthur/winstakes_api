@@ -18,56 +18,40 @@ class ChallengesController < ApplicationController
   end
 
   def create
-    challenge = current_user.created_challenges.new(challenge_params)
+    @challenge = current_user.created_challenges.new(challenge_params)
 
-    criteria_params.each do |_, criterion_attr|
-      challenge.criteria.build(criterion_attr)
-    end
-    
-    if challenge.save
-      if params[:judges].present?
-        judges = User.find(params[:judges])
-        if challenge.judges.include?(judges)
-          render json: { error: 'User is already a judge for this challenge' }, status: :unprocessable_entity
-        else
-          challenge.judges << judges
-          render json: challenge, serializer: ChallengeSerializer, status: :created
-        end
+    ActiveRecord::Base.transaction do
+      if @challenge.save
+        handle_judges(@challenge)
+        handle_criteria(@challenge)
+
+        render json: @challenge, serializer: ChallengeSerializer, status: :created
       else
-        render json: challenge, serializer: ChallengeSerializer, status: :created
+        render json: @challenge.errors, status: :unprocessable_entity
+        raise ActiveRecord::Rollback
       end
-    else
-      render json: challenge.errors, status: :unprocessable_entity
     end
+  rescue ActiveRecord::StatementInvalid => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def update
-    challenge = current_user.created_challenges.find_by(id: params[:id])
-    valid_judging_methods = ['publicVote', 'automatedFirstComplete']
-
-    if challenge.nil?
-      render json: { error: "Challenge not found" }, status: :not_found
-      return
-    end
+    challenge = find_challenge(params[:id])
+    return if challenge.nil?
 
     ActiveRecord::Base.transaction do
       if challenge.update(challenge_params)
-        judge_ids = params[:judges]&.map(&:to_i) || []
-        challenge.manage_judges(judge_ids, challenge.judging_method)
-
-        if valid_judging_methods.include?(challenge.judging_method)
-          challenge.criteria.destroy_all
-        else
-          Criterion.update_criteria_for_challenge(challenge, criteria_params)
-        end
+        handle_judges(challenge)
+        handle_criteria(challenge)
 
         render json: challenge, serializer: ChallengeSerializer, status: :ok
       else
+        render json: challenge.errors, status: :unprocessable_entity
         raise ActiveRecord::Rollback
       end
-    rescue ActiveRecord::RecordInvalid
-      render json: challenge.errors, status: :unprocessable_entity
     end
+  rescue ActiveRecord::StatementInvalid => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def destroy
@@ -81,12 +65,30 @@ class ChallengesController < ApplicationController
 
   private
 
+  def find_challenge(challenge_id)
+    challenge = current_user.created_challenges.find_by(id: challenge_id)
+    unless challenge
+      render json: { error: "Challenge not found" }, status: :not_found
+      return nil
+    end
+    challenge
+  end
+
+  def handle_judges(challenge)
+    judge_ids = params[:judges]&.map(&:to_i) || []
+    challenge.manage_judges(judge_ids, challenge.judging_method)
+  end
+
+  def handle_criteria(challenge)
+    Criterion.update_criteria_for_challenge(challenge, criteria_params)
+  end
+
   def criteria_params
     # Allow permitting id and name for criteria; id should ideally not be needed for new records.
     params.require(:criteria).permit!.to_h
   end
 
   def challenge_params
-    params.require(:challenge).permit(:title, :description, :criteria_for_winning, :judging_method, :prize_type, :token_prize_percentage, :fixed_token_prize, :product_id, :video, :start_date, :end_date)
+    params.require(:challenge).permit(:title, :description, :criteria_for_winning, :judging_method, :prize_type, :token_prize_percentage, :finals_judging, :fixed_token_prize, :entry_fee, :product_id, :video, :start_date, :end_date)
   end
 end

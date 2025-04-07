@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_03_24_192455) do
+ActiveRecord::Schema[7.0].define(version: 2025_04_03_171133) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -83,7 +83,8 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_24_192455) do
     t.integer "product_id"
     t.datetime "start_date"
     t.datetime "end_date"
-    t.integer "finals_judging", default: 0, null: false
+    t.string "finals_judging"
+    t.integer "entry_fee", default: 0
     t.index ["creator_id"], name: "index_challenges_on_creator_id"
   end
 
@@ -245,13 +246,15 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_24_192455) do
   end
 
   create_table "tokens", force: :cascade do |t|
-    t.decimal "value"
+    t.decimal "value", precision: 10
     t.bigint "user_id", null: false
     t.datetime "expires_at"
     t.boolean "revoked"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "wallet_id", null: false
     t.index ["user_id"], name: "index_tokens_on_user_id"
+    t.index ["wallet_id"], name: "index_tokens_on_wallet_id"
   end
 
   create_table "user_candidates", force: :cascade do |t|
@@ -299,6 +302,13 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_24_192455) do
     t.index ["user_id"], name: "index_votes_on_user_id"
   end
 
+  create_table "wallets", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_wallets_on_user_id"
+  end
+
   create_table "wonks", force: :cascade do |t|
     t.text "content"
     t.bigint "user_id", null: false
@@ -336,6 +346,7 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_24_192455) do
   add_foreign_key "scores", "entries"
   add_foreign_key "scores", "users"
   add_foreign_key "tokens", "users"
+  add_foreign_key "tokens", "wallets"
   add_foreign_key "user_candidates", "candidates"
   add_foreign_key "user_candidates", "users"
   add_foreign_key "user_issues", "issues"
@@ -343,6 +354,7 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_24_192455) do
   add_foreign_key "votes", "challenges"
   add_foreign_key "votes", "entries"
   add_foreign_key "votes", "users"
+  add_foreign_key "wallets", "users"
   add_foreign_key "wonks", "challenges"
   add_foreign_key "wonks", "profiles"
   add_foreign_key "wonks", "users"

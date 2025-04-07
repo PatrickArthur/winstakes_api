@@ -1,4 +1,6 @@
 class Challenge < ApplicationRecord
+  enum status: { upcoming: 0, open: 1, voting: 2, closed: 3 }
+
   belongs_to :creator, class_name: 'User'
   belongs_to :product, optional: true
   has_many :challenge_participants
@@ -20,8 +22,9 @@ class Challenge < ApplicationRecord
 
 
   after_create_commit :create_notification
+  after_create :schedule_state_transitions
   has_many :wonks, dependent: :destroy
-  has_many :judgeships
+  has_many :judgeships, dependent: :destroy
   has_many :judges, through: :judgeships, source: :user
   after_create :create_wonk
 
@@ -82,7 +85,7 @@ class Challenge < ApplicationRecord
 
   def manage_judges(judge_ids, judging_method)
     # Clear judges if the judging method is not "selection of judges"
-    if judging_method != "selectionOfJudges"
+    if finals_judging != "selectionOfJudges"
       self.judges.clear
       return
     end
@@ -107,6 +110,27 @@ class Challenge < ApplicationRecord
     now = Time.current
 
     now >= voting_start && now <= voting_end
+  end
+
+  def schedule_state_transitions
+    ChallengeStateTransitionJob.set(wait_until: start_date).perform_later(id, 'open')
+    ChallengeStateTransitionJob.set(wait_until: voting_start_time).perform_later(id, 'voting')
+    ChallengeStateTransitionJob.set(wait_until: end_date).perform_later(id, 'closed')
+  end
+
+  def final_judging_required?
+    judging_method.in?(%w[selectionOfJudges]) || final_judging == 'creator'
+  end
+
+  # Add this method to return final winner (by score or votes depending on config)
+  def winning_entry
+    if final_judging == 'creator'
+      entries.max_by { |e| e.weighted_score }
+    elsif final_judging == 'judges'
+      entries.max_by { |e| e.average_score || 0 }
+    else
+      entries.max_by(&:vote_count)
+    end
   end
 
   private

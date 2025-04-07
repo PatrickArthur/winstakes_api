@@ -20,6 +20,8 @@ class TokensController < ApplicationController
 		# Create or retrieve a Customer
 		customer = Stripe::Customer.create(email: current_user.email)
 
+		current_user.create_wallet unless current_user.wallet.present?
+
 		# Create a PaymentIntent without automatically confirming it
 		intent = Stripe::PaymentIntent.create({
 		  amount: amount, # Amount in cents

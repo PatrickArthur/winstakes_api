@@ -9,23 +9,35 @@ class ChallengeParticipantsController < ApplicationController
 	end
 
 	def join
-		challenge = Challenge.find(params[:challenge_id])
-		if @user.challenges.exists?(challenge.id)
-			render json: { message: "Already joined this challenge" }, status: :unprocessable_entity
-		else
-			@user.challenges << challenge
-			render json: { message: "Challenge joined successfully" }, status: :ok
-		end
+	    challenge = Challenge.find(params[:challenge_id])
+	    wallet = current_user.wallet || current_user.create_wallet
+	    fee = challenge.entry_fee || 0
+	    
+	    if wallet.balance < fee
+	      render json: { error: "Not enough tokens" }, status: :payment_required and return
+	    end
+
+	    ActiveRecord::Base.transaction do
+	      wallet.adjust!(-fee)
+
+	      participant = challenge.challenge_participants.create!(
+	        user: @user
+	      )
+
+	      render json: participant, status: :created
+	    end
 	end
 
-	def unjoin
-	  participant = @challenge.challenge_participants.find_by(user: current_user)
+  	def unjoin
+	    participant = ChallengeParticipant.find(params[:participant_id])
+	    entry = participant.entries.find_by(challenge_participant_id: participant.id) unless participant.entries.empty? 
 
-	  if participant&.destroy
-	    render json: { message: "Unjoined successfully." }, status: :ok
-	  else
-	    render json: { error: "Unable to unjoin." }, status: :unprocessable_entity
-	  end
+	    if entry.present?
+	      render json: { error: "Cannot leave after submitting an entry" }, status: :forbidden
+	    else
+	      participant.destroy
+	      render json: { message: "You have left the challenge." }, status: :ok
+	    end
 	end
 
   	def destroy
