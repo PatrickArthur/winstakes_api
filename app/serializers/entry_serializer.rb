@@ -1,5 +1,5 @@
 class EntrySerializer < ActiveModel::Serializer
-  attributes :id, :title, :description, :file_attachment, :video_attachment, :evidence_attachment_urls, :vote_count, :challenge, :weighted_score, :created_at, :updated_at
+  attributes :id, :title, :description, :file_attachment, :video_attachment, :evidence_attachment_urls, :vote_count, :challenge, :weighted_score, :voted_by_current_user, :created_at, :updated_at
 
   belongs_to :challenge_participant, serializer: ChallengeParticipantSerializer
 
@@ -26,5 +26,10 @@ class EntrySerializer < ActiveModel::Serializer
 
   def challenge
     object.challenge_participant.challenge
+  end
+
+  def voted_by_current_user
+    current_user = @instance_options[:current_user] # Access current_user here
+    current_user.present? && object.votes.exists?(user: current_user)
   end
 end

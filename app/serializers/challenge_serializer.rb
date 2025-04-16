@@ -37,9 +37,9 @@ class ChallengeSerializer < ActiveModel::Serializer
     end
   end
 
-   def entries
+  def entries
     object.challenge_participants.map(&:entries).flatten.map do |entry|
-      EntrySerializer.new(entry).serializable_hash
+      EntrySerializer.new(entry, current_user: @instance_options[:current_user]).serializable_hash
     end
   end
 end

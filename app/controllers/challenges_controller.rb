@@ -14,7 +14,7 @@ class ChallengesController < ApplicationController
 
   def show
     challenge = Challenge.find(params[:id])
-    render json: challenge, serializer: ChallengeSerializer
+    render json: challenge, serializer: ChallengeSerializer, current_user: current_user
   end
 
   def create
